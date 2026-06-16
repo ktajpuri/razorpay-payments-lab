@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Payments Lab — One Button</title>
+  <!-- Razorpay hosted Checkout. The client stays thin on purpose: the widget
+       handles cards/UPI/netbanking, which is what keeps us out of PCI scope. -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+<body>
+  <!-- No styling on purpose. The lesson is the payment path, not CSS. -->
+  <h1>Payments Lab</h1>
+  <p id="product">Loading product…</p>
+  <button id="pay" disabled>Pay</button>
+  <pre id="log"></pre>
+
+  <script>
+    const logEl = document.getElementById('log');
+    const log = (m) => { logEl.textContent += m + '\n'; };
+
+    let CONFIG = null;
+
+    async function init() {
+      const res = await fetch('/config');
+      CONFIG = await res.json();
+      document.getElementById('product').textContent =
+        `${CONFIG.product.name} — ₹${(CONFIG.product.amount / 100).toFixed(2)}`;
+      document.getElementById('pay').disabled = false;
+    }
+
+    async function pay() {
+      // 1. Ask OUR server to create an order. Never create amounts on the client.
+      const orderRes = await fetch('/create-order', { method: 'POST' });
+      const order = await orderRes.json();
+      log('order created: ' + order.id);
+
+      // 2. Open Checkout with that order_id.
+      const rzp = new Razorpay({
+        key: CONFIG.keyId,
+        order_id: order.id,
+        amount: order.amount,
+        currency: order.currency,
+        name: 'Payments Lab',
+        description: CONFIG.product.name,
+        // 3. SUCCESS callback — provisional only. Server verifies the signature,
+        //    but the WEBHOOK is what finalizes state. Try closing the tab right
+        //    after paying (scenario 3): the order still reaches PAID via webhook.
+        handler: async function (response) {
+          log('checkout success (provisional): ' + response.razorpay_payment_id);
+          const verifyRes = await fetch('/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(response),
+          });
+          const v = await verifyRes.json();
+          log('verify: ' + JSON.stringify(v));
+          log('-> poll /orders/' + order.id + ' to watch the webhook finalize it');
+        },
+        modal: {
+          // SCENARIO 6: user dismisses without paying. No callback fires.
+          // The order stays CREATED and the sweeper marks it ABANDONED later.
+          ondismiss: function () { log('checkout dismissed — order left CREATED (sweeper will abandon it)'); },
+        },
+      });
+
+      rzp.on('payment.failed', function (resp) {
+        // SCENARIO 5: use UPI id failure@razorpay or the mock bank Failure button.
+        log('payment.failed: ' + (resp.error && resp.error.description));
+      });
+
+      rzp.open();
+    }
+
+    document.getElementById('pay').addEventListener('click', pay);
+    init();
+  </script>
+</body>
+</html>

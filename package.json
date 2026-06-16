@@ -1,0 +1,27 @@
+{
+  "name": "razorpay-payments-lab",
+  "version": "1.0.0",
+  "description": "A learning lab for one-time payment integration: a real gateway flow plus a proven failure matrix. Built to understand idempotency, async finalization, and the order lifecycle first-hand.",
+  "type": "commonjs",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "test": "node --test \"test/unit/*.test.js\"",
+    "test:unit": "node --test \"test/unit/*.test.js\"",
+    "test:e2e": "node --test \"test/e2e/*.test.js\""
+  },
+  "keywords": [
+    "payments",
+    "razorpay",
+    "idempotency",
+    "webhooks",
+    "state-machine"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "better-sqlite3": "^11.8.1",
+    "dotenv": "^17.4.2",
+    "express": "^4.21.2",
+    "razorpay": "^2.9.6"
+  }
+}

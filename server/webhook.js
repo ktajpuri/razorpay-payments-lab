@@ -71,12 +71,14 @@ function handleWebhook(webhookSecret) {
     const ok = verifyWebhookSignature({ rawBody, signature, webhookSecret });
     if (!ok) {
       // Untrusted / tampered. Reject without processing.
+      console.warn(`[webhook] REJECTED bad signature (event ${eventId || 'n/a'})`);
       return res.status(400).json({ error: 'invalid webhook signature' });
     }
 
     // 2. Idempotency. Insert the event id; if it already existed, this is a
     //    redelivery — acknowledge 200 but do nothing.
     if (eventId && !store.markEventProcessed(eventId)) {
+      console.log(`[webhook] DUPLICATE ignored (event ${eventId}) — idempotency guard held`);
       return res.status(200).json({ status: 'duplicate-ignored' });
     }
 
@@ -85,10 +87,16 @@ function handleWebhook(webhookSecret) {
     try {
       body = JSON.parse(rawBody.toString('utf8'));
     } catch {
+      console.warn('[webhook] invalid JSON body');
       return res.status(400).json({ error: 'invalid json' });
     }
 
     const result = applyEvent(body);
+
+    let logLine = `[webhook] ${body.event} (event ${eventId || 'n/a'}) -> ${result.action}`;
+    if (result.from && result.to) logLine += ` ${result.from}->${result.to}`;
+    if (result.reason) logLine += ` (${result.reason})`;
+    console.log(logLine);
 
     // Always 200 on a verified, non-duplicate event we understood — even a
     // legitimate no-op — so Razorpay stops retrying. A 5xx here would cause

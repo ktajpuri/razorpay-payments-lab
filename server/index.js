@@ -44,6 +44,7 @@ app.get('/config', (req, res) => {
 app.post('/create-order', async (req, res) => {
   try {
     const order = await createOrder();
+    console.log('order created', order)
     res.json(order);
   } catch (err) {
     console.error('[create-order]', err.message);
@@ -65,7 +66,7 @@ app.post('/refund/:orderId', async (req, res) => {
     const refund = await client.payments.refund(order.payment_id, {});
     res.json({ ok: true, refund, note: 'REFUNDED will be set when refund.processed webhook arrives' });
   } catch (err) {
-    console.error('[refund]', err.message);
+    console.error('[refund]', err);
     res.status(500).json({ error: err.message });
   }
 });

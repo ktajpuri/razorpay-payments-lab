@@ -19,6 +19,8 @@ worked.
 **Build:** Generate test keys (Dashboard → API Keys → Test Mode). Copy
 `.env.example` to `.env`, fill them in. `npm install`, `npm start`.
 
+run `ngrok http 3000` to start the proxy for webhooks
+
 **Concept:** There is no "staging Razorpay." There is test mode and live mode,
 distinguished only by which key set you load. Everything in this lab — every
 failure — is reproducible in test mode with no real money. That fact is the whole
